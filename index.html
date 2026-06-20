@@ -43,9 +43,7 @@
     .field { display: flex; flex-direction: column; gap: 5px; }
     .field label { font-size: 12px; font-weight: 500; color: var(--muted); display: flex; align-items: center; gap: 6px; }
     .input-wrap { position: relative; }
-    .input-wrap .prefix { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 13px; pointer-events: none; }
     .input-wrap .suffix { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 13px; pointer-events: none; }
-    .input-wrap input { padding-left: 26px; }
     .input-wrap.has-suffix input { padding-right: 28px; }
     input[type="number"], input[type="text"] {
       width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius);
@@ -210,7 +208,6 @@
       <div class="field">
         <label>Monthly spending in retirement</label>
         <div class="input-wrap">
-          <span class="prefix">$</span>
           <input type="number" id="monthlySpend" value="5000" oninput="recalc()">
         </div>
         <div style="font-size:11px;color:var(--dim);margin-top:3px;">This is how much you want to spend each month when retired.</div>
@@ -228,7 +225,6 @@
       <div class="field">
         <label>Investment savings (stocks, SRS, cash)</label>
         <div class="input-wrap">
-          <span class="prefix">$</span>
           <input type="number" id="currentInvest" value="50000" oninput="recalc()">
         </div>
         <details class="cpf-info">
@@ -239,7 +235,6 @@
       <div class="field">
         <label>CPF balance (OA + SA combined)</label>
         <div class="input-wrap">
-          <span class="prefix">$</span>
           <input type="number" id="currentCPF" value="20000" oninput="recalc()">
         </div>
         <details class="cpf-info">
@@ -266,7 +261,6 @@
       <div class="field">
         <label>Monthly investment savings</label>
         <div class="input-wrap">
-          <span class="prefix">$</span>
           <input type="number" id="monthlyInvest" value="2000" oninput="recalc()">
         </div>
         <div style="font-size:11px;color:var(--dim);margin-top:3px;">How much you put into stocks, ETFs, SRS, or savings each month.</div>
@@ -274,7 +268,6 @@
       <div class="field">
         <label>Monthly CPF contributions (OA + SA)</label>
         <div class="input-wrap">
-          <span class="prefix">$</span>
           <input type="number" id="monthlyCPF" value="1160" oninput="recalc()">
         </div>
         <details class="cpf-info">
@@ -304,15 +297,13 @@
         <div class="field">
           <label>Monthly investment savings during study</label>
           <div class="input-wrap">
-            <span class="prefix">$</span>
-            <input type="number" id="studyMonthlyInvest" value="0" oninput="recalc()">
+              <input type="number" id="studyMonthlyInvest" value="0" oninput="recalc()">
           </div>
         </div>
         <div class="field">
           <label>Monthly CPF contributions during study</label>
           <div class="input-wrap">
-            <span class="prefix">$</span>
-            <input type="number" id="studyMonthlyCPF" value="0" oninput="recalc()">
+              <input type="number" id="studyMonthlyCPF" value="0" oninput="recalc()">
           </div>
           <div style="font-size:11px;color:var(--dim);margin-top:3px;">Full-time students generally have no CPF. Part-time workers may have a small amount.</div>
         </div>
