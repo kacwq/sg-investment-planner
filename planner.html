@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SG Investment Planner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #F4F5F9;
+      --surface:   #FFFFFF;
+      --border:    #E2E5EF;
+      --text:      #1A1A2E;
+      --muted:     #6B7280;
+      --dim:       #9CA3AF;
+      --accent:    #7C3AED;
+      --accent-lt: #EDE9FE;
+      --green:     #10B981;
+      --green-lt:  #D1FAE5;
+      --red:       #EF4444;
+      --red-lt:    #FEE2E2;
+      --amber:     #F59E0B;
+      --amber-lt:  #FEF3C7;
+      --radius:    10px;
+      --radius-lg: 16px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    header .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--text);
+      text-decoration: none;
+    }
+    header .logo-icon {
+      width: 28px; height: 28px;
+      background: var(--accent);
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px;
+      color: #fff;
+    }
+    header .tag {
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--accent-lt);
+      color: var(--accent);
+      padding: 2px 8px;
+      border-radius: 20px;
+      letter-spacing: 0.3px;
+    }
+
+    /* ── Layout ── */
+    .layout {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 0;
+      min-height: calc(100vh - 56px);
+    }
+
+    /* ── Left panel ── */
+    .panel-left {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    /* Mode toggle */
+    .mode-toggle {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: var(--bg);
+      border-radius: var(--radius);
+      padding: 3px;
+      border: 1px solid var(--border);
+    }
+    .mode-toggle button {
+      border: none;
+      background: none;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      color: var(--muted);
+      transition: all 0.15s;
+    }
+    .mode-toggle button.active {
+      background: var(--surface);
+      color: var(--accent);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      font-weight: 600;
+    }
+
+    /* Form elements */
+    .field { margin-bottom: 12px; }
+    .field label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+    .field label .hint {
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--dim);
+    }
+    .field input[type="number"], .field input[type="text"], .field select {
+      width: 100%;
+      padding: 8px 11px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-family: inherit;
+      font-size: 13px;
+      color: var(--text);
+      background: var(--surface);
+      transition: border 0.15s;
+      -moz-appearance: textfield;
+    }
+    .field input:focus, .field select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(124,58,237,0.08);
+    }
+    .field input::-webkit-outer-spin-button,
+    .field input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    .input-prefix {
+      position: relative;
+    }
+    .input-prefix span {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 13px;
+      pointer-events: none;
+    }
+    .input-prefix input { padding-left: 22px; }
+    .input-suffix { position: relative; }
+    .input-suffix span {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 13px;
+      pointer-events: none;
+    }
+    .input-suffix input { padding-right: 28px; }
+
+    /* Accordion / collapsible sections */
+    .accordion-section { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .accordion-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 14px;
+      cursor: pointer;
+      background: var(--bg);
+      user-select: none;
+    }
+    .accordion-header:hover { background: #ECEEF5; }
+    .accordion-header span { font-size: 13px; font-weight: 600; color: var(--text); }
+    .accordion-header .arrow { color: var(--muted); font-size: 12px; transition: transform 0.2s; }
+    .accordion-header.open .arrow { transform: rotate(180deg); }
+    .accordion-body { display: none; padding: 14px; border-top: 1px solid var(--border); }
+    .accordion-body.open { display: block; }
+
+    /* Bucket table */
+    .bucket-table { width: 100%; }
+    .bucket-table thead th {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 0 0 8px 0;
+      text-align: left;
+    }
+    .bucket-table thead th:not(:first-child) { text-align: right; }
+    .bucket-table tbody tr { border-top: 1px solid var(--border); }
+    .bucket-table tbody td { padding: 8px 0; vertical-align: middle; }
+    .bucket-table tbody td:not(:first-child) { text-align: right; }
+    .bucket-label {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text);
+    }
+    .bucket-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .bucket-table input {
+      width: 100px;
+      text-align: right;
+      padding: 5px 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: inherit;
+      color: var(--text);
+      -moz-appearance: textfield;
+    }
+    .bucket-table input::-webkit-outer-spin-button,
+    .bucket-table input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .bucket-table input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    /* Benchmark toggle */
+    .bench-toggle {
+      display: flex;
+      gap: 8px;
+    }
+    .bench-toggle label {
+      flex: 1;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      transition: all 0.15s;
+    }
+    .bench-toggle input[type="radio"] { display: none; }
+    .bench-toggle input[type="radio"]:checked + label {
+      border-color: var(--accent);
+      background: var(--accent-lt);
+      color: var(--accent);
+    }
+
+    /* Milestone chip */
+    .milestone-list { display: flex; flex-direction: column; gap: 8px; }
+    .milestone-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 12px;
+    }
+    .milestone-chip .age-badge {
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 20px;
+    }
+    .milestone-chip .label { flex: 1; color: var(--text); font-weight: 500; }
+    .milestone-chip button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--dim);
+      font-size: 16px;
+      line-height: 1;
+      padding: 0 2px;
+    }
+    .milestone-chip button:hover { color: var(--red); }
+
+    .add-milestone-row {
+      display: grid;
+      grid-template-columns: 70px 1fr auto;
+      gap: 8px;
+      align-items: center;
+    }
+    .add-milestone-row input {
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-family: inherit;
+      font-size: 12px;
+      color: var(--text);
+    }
+    .add-milestone-row input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .btn-add {
+      padding: 7px 14px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-add:hover { background: #6D28D9; }
+
+    /* ── Right panel ── */
+    .panel-right {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      overflow-y: auto;
+    }
+
+    /* Summary bar */
+    .summary-bar {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .summary-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+    }
+    .summary-card .sc-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .summary-card .sc-value {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.5px;
+    }
+    .summary-card .sc-sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+    .summary-card .sc-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 20px;
+      margin-top: 4px;
+    }
+    .status-green { background: var(--green-lt); color: var(--green); }
+    .status-red   { background: var(--red-lt);   color: var(--red); }
+    .status-amber { background: var(--amber-lt);  color: var(--amber); }
+
+    /* Backward mode result */
+    .backward-result {
+      background: var(--accent-lt);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      display: none;
+    }
+    .backward-result.show { display: block; }
+    .backward-result h3 { font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 6px; }
+    .backward-result p { font-size: 13px; color: var(--text); }
+    .backward-result strong { font-size: 18px; font-weight: 800; color: var(--accent); }
+
+    /* Chart */
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+    }
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .chart-header h2 { font-size: 15px; font-weight: 700; }
+    .chart-legend {
+      display: flex;
+      gap: 16px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .legend-line {
+      width: 20px; height: 3px;
+      border-radius: 2px;
+    }
+    .legend-dash {
+      width: 20px; height: 0;
+      border-top: 2px dashed var(--muted);
+    }
+    .chart-wrap { position: relative; height: 280px; }
+
+    /* Milestone cards */
+    .milestones-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .milestone-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+    }
+    .milestone-card.sg-milestone {
+      border-top: 3px solid var(--accent);
+    }
+    .milestone-card .mc-age {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+    .milestone-card .mc-label {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 12px;
+    }
+    .milestone-card .mc-total {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.5px;
+      margin-bottom: 10px;
+    }
+    .milestone-card .mc-breakdown { display: flex; flex-direction: column; gap: 5px; }
+    .mc-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+    }
+    .mc-row .mc-key { color: var(--muted); display: flex; align-items: center; gap: 6px; }
+    .mc-row .mc-val { font-weight: 600; color: var(--text); }
+    .mc-divider { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
+    .mc-gap {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+    .mc-gap.ahead { background: var(--green-lt); color: var(--green); }
+    .mc-gap.behind { background: var(--red-lt); color: var(--red); }
+    .mc-gap.on-track { background: var(--amber-lt); color: var(--amber); }
+    .mc-cpf-life {
+      margin-top: 8px;
+      padding: 8px 10px;
+      background: var(--accent-lt);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .mc-cpf-life .mc-cpf-label { font-weight: 400; color: var(--accent); opacity: 0.8; font-size: 11px; margin-bottom: 2px; }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      .panel-left { border-right: none; border-bottom: 1px solid var(--border); }
+      .summary-bar { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 600px) {
+      .summary-bar { grid-template-columns: 1fr; }
+      .field-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">
+    <span class="logo-icon">$</span>
+    SG Investment Planner
+  </span>
+  <span class="tag">Singapore</span>
+</header>
+
+<div class="layout">
+
+  <!-- ════ LEFT PANEL ════ -->
+  <div class="panel-left">
+
+    <!-- Mode toggle -->
+    <div>
+      <div class="section-title">Planning mode</div>
+      <div class="mode-toggle">
+        <button id="btn-forward" class="active" onclick="setMode('forward')">📈 Project forward</button>
+        <button id="btn-backward" onclick="setMode('backward')">🎯 What do I need?</button>
+      </div>
+    </div>
+
+    <!-- Profile -->
+    <div>
+      <div class="section-title">Your profile</div>
+      <div class="field-row">
+        <div class="field">
+          <label>Current age</label>
+          <input type="number" id="currentAge" value="30" min="18" max="80" oninput="recalc()">
+        </div>
+        <div class="field">
+          <label>Retirement age</label>
+          <input type="number" id="retireAge" value="65" min="40" max="90" oninput="recalc()">
+        </div>
+      </div>
+      <div class="field">
+        <label>Annual income (for benchmark) <span class="hint">SGD</span></label>
+        <div class="input-prefix">
+          <span>$</span>
+          <input type="number" id="annualIncome" value="72000" oninput="recalc()">
+        </div>
+      </div>
+    </div>
+
+    <!-- Backward mode extras -->
+    <div id="backward-inputs" style="display:none;">
+      <div class="section-title">Retirement target</div>
+      <div class="field">
+        <label>Target amount at retirement <span class="hint">SGD</span></label>
+        <div class="input-prefix">
+          <span>$</span>
+          <input type="number" id="targetAmount" value="2000000" oninput="recalc()">
+        </div>
+      </div>
+      <div class="field">
+        <label>Extra savings go into <span class="hint">bucket</span></label>
+        <select id="targetBucket" onchange="recalc()">
+          <option value="stocks">Stocks / ETFs</option>
+          <option value="srs">SRS</option>
+          <option value="ssb">SSB / T-bills</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Current balances -->
+    <div class="accordion-section">
+      <div class="accordion-header open" onclick="toggleAccordion(this)">
+        <span>Current balances</span>
+        <span class="arrow">▾</span>
+      </div>
+      <div class="accordion-body open">
+        <table class="bucket-table">
+          <thead>
+            <tr>
+              <th>Bucket</th>
+              <th>Balance ($)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="bucket-label"><span class="bucket-dot" style="background:#7C3AED"></span>CPF OA</span></td>
+              <td><input type="number" id="bal_cpfOA" value="30000" oninput="recalc()"></td>
+            </tr>
+            <tr>
+              <td><span class="bucket-label"><span class="bucket-dot" style="background:#A78BFA"></span>CPF SA</span></td>
+              <td><input type="number" id="bal_cpfSA" value="15000" oninput="recalc()"></td>
+            </tr>
+            <tr>
+              <td><span class="bucket-label"><span class="bucket-dot" style="background:#6366F1"></span>SRS</span></td>
+              <td><input type="number" id="bal_srs" value="5000" oninput="recalc()"></td>
+            </tr>
+            <tr>
+              <td><span class="bucket-label"><span class="bucket-dot" style="background:#10B981"></span>Stocks / ETFs</span></td>
+              <td><input type="number" id="bal_stocks" value="20000" oninput="recalc()"></td>
+            </tr>
+            <tr>
+              <td><span class="bucket-label"><span class="bucket-dot" style="background:#F59E0B"></span>SSB / T-bills</span></td>
+              <td><input type="number" id="bal_ssb" value="10000" oninput="recalc()"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Monthly contributions -->
+    <div class="accordion-section">
+      <div class="accordion-header open" onclick="toggleAccordion(this)">
+        <span>Monthly contributions</span>
+        <span class="arrow">▾</span>
+      </div>
+      <div class="accordion-body open">
+        <table class="bucket-table">
+          <thead>
+            <tr>
+              <th>Bucket</th>
+              <th>$/month</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="bucket-label"><span class="bucket-dot" style="background:#7C3AED"></span>CPF OA</span></td>
+              <td><input type="number" id="con_cpfOA" value="920" oninput="recalc()"></td>
+            </tr>
+            <tr>
+              <td><span class="bucket-label"><span class="bucket-dot" style="background:#A78BFA"></span>CPF SA</span></td>
+              <td><input type="number" id="con_cpfSA" value="240" oninput="recalc()"></td>
+            </tr>
+            <tr>
+              <td><span class="bucket-label"><span class="bucket-dot" style="background:#6366F1"></span>SRS</span></td>
+              <td><input type="number" id="con_srs" value="0" oninput="recalc()"></td>
+            </tr>
+            <tr>
+              <td><span class="bucket-label"><span class="bucket-dot" style="background:#10B981"></span>Stocks / ETFs</span></td>
+              <td><input type="number" id="con_stocks" value="500" oninput="recalc()"></td>
+            </tr>
+            <tr>
+              <td><span class="bucket-label"><span class="bucket-dot" style="background:#F59E0B"></span>SSB / T-bills</span></td>
+              <td><input type="number" id="con_ssb" value="200" oninput="recalc()"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Return rates -->
+    <div class="accordion-section">
+      <div class="accordion-header" onclick="toggleAccordion(this)">
+        <span>Return rate assumptions</span>
+        <span class="arrow">▾</span>
+      </div>
+      <div class="accordion-body">
+        <table class="bucket-table">
+          <thead>
+            <tr>
+              <th>Bucket</th>
+              <th>% p.a.</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="bucket-label"><span class="bucket-dot" style="background:#7C3AED"></span>CPF OA</span></td>
+              <td>
+                <div class="input-suffix" style="max-width:100px;margin-left:auto;">
+                  <input type="number" id="rate_cpfOA" value="2.5" step="0.1">
+                  <span>%</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td><span class="bucket-label"><span class="bucket-dot" style="background:#A78BFA"></span>CPF SA / RA</span></td>
+              <td>
+                <div class="input-suffix" style="max-width:100px;margin-left:auto;">
+                  <input type="number" id="rate_cpfSA" value="4.0" step="0.1">
+                  <span>%</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td><span class="bucket-label"><span class="bucket-dot" style="background:#6366F1"></span>SRS</span></td>
+              <td>
+                <div class="input-suffix" style="max-width:100px;margin-left:auto;">
+                  <input type="number" id="rate_srs" value="5.0" step="0.1">
+                  <span>%</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td><span class="bucket-label"><span class="bucket-dot" style="background:#10B981"></span>Stocks / ETFs</span></td>
+              <td>
+                <div class="input-suffix" style="max-width:100px;margin-left:auto;">
+                  <input type="number" id="rate_stocks" value="7.0" step="0.1">
+                  <span>%</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td><span class="bucket-label"><span class="bucket-dot" style="background:#F59E0B"></span>SSB / T-bills</span></td>
+              <td>
+                <div class="input-suffix" style="max-width:100px;margin-left:auto;">
+                  <input type="number" id="rate_ssb" value="3.0" step="0.1">
+                  <span>%</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="field" style="margin-top:14px;">
+          <label>CPF Full Retirement Sum (FRS) in 2025 <span class="hint">grows ~3.5%/yr</span></label>
+          <div class="input-prefix">
+            <span>$</span>
+            <input type="number" id="frs2025" value="213000" oninput="recalc()">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Benchmark type -->
+    <div>
+      <div class="section-title">Savings benchmark</div>
+      <div class="bench-toggle">
+        <input type="radio" name="bench" id="bench-salary" value="salary" checked onchange="recalc()">
+        <label for="bench-salary">
+          <span>📊</span>
+          <div>
+            <div style="font-weight:600;color:var(--text)">Salary multiples</div>
+            <div style="font-size:11px;margin-top:2px;color:var(--muted)">1× at 30 → 11× at 65</div>
+          </div>
+        </label>
+        <input type="radio" name="bench" id="bench-target" value="target" onchange="recalc()">
+        <label for="bench-target">
+          <span>🎯</span>
+          <div>
+            <div style="font-weight:600;color:var(--text)">Linear to target</div>
+            <div style="font-size:11px;margin-top:2px;color:var(--muted)">Straight line to retirement goal</div>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <!-- Milestones -->
+    <div>
+      <div class="section-title">Custom milestones</div>
+      <div class="milestone-list" id="milestoneList"></div>
+      <div style="margin-top:10px;">
+        <div class="add-milestone-row">
+          <input type="number" id="newMilestoneAge" placeholder="Age" min="18" max="90">
+          <input type="text" id="newMilestoneLabel" placeholder="Label (e.g. FIRE goal)">
+          <button class="btn-add" onclick="addMilestone()">+ Add</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /panel-left -->
+
+  <!-- ════ RIGHT PANEL ════ -->
+  <div class="panel-right">
+
+    <!-- Summary bar -->
+    <div class="summary-bar">
+      <div class="summary-card">
+        <div class="sc-label">At retirement (age <span id="sc-retireAge">65</span>)</div>
+        <div class="sc-value" id="sc-total">–</div>
+        <div class="sc-sub">Projected total wealth</div>
+      </div>
+      <div class="summary-card">
+        <div class="sc-label">Savings benchmark at retirement</div>
+        <div class="sc-value" id="sc-bench">–</div>
+        <div id="sc-gap-wrap"><span class="sc-status" id="sc-gap-badge">–</span></div>
+      </div>
+      <div class="summary-card">
+        <div class="sc-label">CPF LIFE est. payout/month</div>
+        <div class="sc-value" id="sc-cpflife">–</div>
+        <div class="sc-sub">From age 65 (Standard Plan est.)</div>
+      </div>
+    </div>
+
+    <!-- Backward result -->
+    <div class="backward-result" id="backward-result">
+      <h3>To reach your target…</h3>
+      <p>You need to invest an additional <strong id="br-amount">$0</strong>/month into <span id="br-bucket">Stocks/ETFs</span> on top of your current contributions.</p>
+    </div>
+
+    <!-- Chart -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <h2>Wealth projection over time</h2>
+        <div class="chart-legend">
+          <span class="legend-item"><span class="legend-line" style="background:#7C3AED"></span>Projected</span>
+          <span class="legend-item"><span class="legend-dash"></span>Benchmark</span>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="wealthChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Milestone cards -->
+    <div>
+      <div class="section-title">Milestone snapshots</div>
+      <div class="milestones-grid" id="milestonesGrid"></div>
+    </div>
+
+  </div><!-- /panel-right -->
+
+</div><!-- /layout -->
+
+<script>
+// ══════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════
+let mode = 'forward';
+let customMilestones = [];
+let chart = null;
+
+const FIXED_MILESTONES = [
+  { age: 55, label: 'CPF RA Creation', sg: true, note: 'OA + SA merge into RA up to FRS' },
+  { age: 63, label: 'Re-employment Age', sg: true, note: 'Many begin winding down' },
+  { age: 65, label: 'CPF LIFE Begins',  sg: true, note: 'Monthly payouts start' },
+];
+
+// ══════════════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════════════
+function fmt(n) {
+  if (Math.abs(n) >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
+  if (Math.abs(n) >= 1e3) return '$' + (n / 1e3).toFixed(0) + 'K';
+  return '$' + Math.round(n).toLocaleString();
+}
+function fmtFull(n) {
+  return '$' + Math.round(n).toLocaleString('en-SG');
+}
+function getVal(id) { return parseFloat(document.getElementById(id).value) || 0; }
+
+// Benchmark salary multiples (SG financial planning guideline)
+const BENCH_MULTIPLES = [
+  { age: 25, m: 0.5 }, { age: 30, m: 1 }, { age: 35, m: 2 },
+  { age: 40, m: 3 },   { age: 45, m: 4 }, { age: 50, m: 5 },
+  { age: 55, m: 7 },   { age: 60, m: 9 }, { age: 65, m: 11 },
+  { age: 90, m: 11 },
+];
+
+function salaryBenchmark(age, annualIncome) {
+  for (let i = 0; i < BENCH_MULTIPLES.length - 1; i++) {
+    const a = BENCH_MULTIPLES[i], b = BENCH_MULTIPLES[i + 1];
+    if (age >= a.age && age <= b.age) {
+      const t = (age - a.age) / (b.age - a.age);
+      return (a.m + t * (b.m - a.m)) * annualIncome;
+    }
+  }
+  if (age < BENCH_MULTIPLES[0].age) return BENCH_MULTIPLES[0].m * annualIncome;
+  return BENCH_MULTIPLES[BENCH_MULTIPLES.length - 1].m * annualIncome;
+}
+
+function linearBenchmark(age, currentAge, retireAge, startWealth, targetAmount) {
+  if (age < currentAge) return startWealth;
+  if (age >= retireAge) return targetAmount;
+  const t = (age - currentAge) / (retireAge - currentAge);
+  return startWealth + t * (targetAmount - startWealth);
+}
+
+// ══════════════════════════════════════════════════════
+//  PROJECTION ENGINE
+// ══════════════════════════════════════════════════════
+function project(extraMonthly = 0, extraBucket = 'stocks') {
+  const currentAge = getVal('currentAge');
+  const retireAge  = getVal('retireAge');
+  const frs2025    = getVal('frs2025');
+
+  // Balances
+  let cpfOA  = getVal('bal_cpfOA');
+  let cpfSA  = getVal('bal_cpfSA');
+  let cpfRA  = 0;
+  let srs    = getVal('bal_srs');
+  let stocks = getVal('bal_stocks');
+  let ssb    = getVal('bal_ssb');
+
+  // Monthly contributions
+  const con = {
+    cpfOA:  getVal('con_cpfOA'),
+    cpfSA:  getVal('con_cpfSA'),
+    srs:    getVal('con_srs'),
+    stocks: getVal('con_stocks'),
+    ssb:    getVal('con_ssb'),
+  };
+  if (extraBucket === 'stocks') con.stocks += extraMonthly;
+  if (extraBucket === 'srs')    con.srs    += extraMonthly;
+  if (extraBucket === 'ssb')    con.ssb    += extraMonthly;
+
+  // Annual rates
+  const r = {
+    cpfOA:  getVal('rate_cpfOA') / 100,
+    cpfSA:  getVal('rate_cpfSA') / 100,
+    srs:    getVal('rate_srs')   / 100,
+    stocks: getVal('rate_stocks') / 100,
+    ssb:    getVal('rate_ssb')   / 100,
+  };
+
+  const years = [];
+  const endAge = Math.max(90, retireAge + 5);
+  let raCreated = false;
+  let cpfLifePayout = 0;
+
+  for (let age = currentAge; age <= endAge; age++) {
+    // At 55: merge OA + SA into RA up to FRS
+    if (age === 55 && !raCreated) {
+      const combined = cpfOA + cpfSA;
+      // FRS grows 3.5%/yr from 2025
+      const yearsDiff = 55 - currentAge;
+      const frsAtAge55 = frs2025 * Math.pow(1.035, Math.max(0, yearsDiff - (new Date().getFullYear() - 2025)));
+      if (combined >= frsAtAge55) {
+        cpfRA = frsAtAge55;
+        cpfOA = combined - frsAtAge55;
+        cpfSA = 0;
+      } else {
+        cpfRA = combined;
+        cpfOA = 0;
+        cpfSA = 0;
+      }
+      raCreated = true;
+    }
+
+    // At 65: calculate CPF LIFE payout estimate (proportional to RA, based on ~$1,500/month at $213K FRS)
+    if (age === 65) {
+      cpfLifePayout = cpfRA * (1500 / 213000);
+    }
+
+    years.push({
+      age,
+      cpfOA: Math.max(0, cpfOA),
+      cpfSA: Math.max(0, cpfSA),
+      cpfRA: Math.max(0, cpfRA),
+      srs:   Math.max(0, srs),
+      stocks: Math.max(0, stocks),
+      ssb:   Math.max(0, ssb),
+      get total() {
+        return this.cpfOA + this.cpfSA + this.cpfRA + this.srs + this.stocks + this.ssb;
+      },
+      cpfLifePayout,
+    });
+
+    // Grow for next year
+    if (age < 55) {
+      cpfOA  = cpfOA  * (1 + r.cpfOA)  + con.cpfOA  * 12;
+      cpfSA  = cpfSA  * (1 + r.cpfSA)  + con.cpfSA  * 12;
+    } else {
+      cpfOA  = cpfOA  * (1 + r.cpfOA)  + (age < retireAge ? con.cpfOA * 12 : 0);
+      cpfRA  = cpfRA  * (1 + r.cpfSA);  // RA earns SA rate
+    }
+    srs    = srs    * (1 + r.srs)    + (age < retireAge ? con.srs    * 12 : 0);
+    stocks = stocks * (1 + r.stocks) + (age < retireAge ? con.stocks * 12 : 0);
+    ssb    = ssb    * (1 + r.ssb)    + (age < retireAge ? con.ssb    * 12 : 0);
+  }
+
+  return years;
+}
+
+// ══════════════════════════════════════════════════════
+//  BACKWARD SOLVER (binary search)
+// ══════════════════════════════════════════════════════
+function solveForExtraMonthly(targetAmount, targetBucket) {
+  const retireAge = getVal('retireAge');
+  let lo = 0, hi = 100000, result = 0;
+  for (let i = 0; i < 50; i++) {
+    const mid = (lo + hi) / 2;
+    const years = project(mid, targetBucket);
+    const atRetire = years.find(y => y.age === retireAge);
+    const proj = atRetire ? atRetire.total : 0;
+    if (proj < targetAmount) lo = mid;
+    else { hi = mid; result = mid; }
+  }
+  return result;
+}
+
+// ══════════════════════════════════════════════════════
+//  RECALC — main entry point
+// ══════════════════════════════════════════════════════
+function recalc() {
+  const currentAge  = getVal('currentAge');
+  const retireAge   = getVal('retireAge');
+  const annualIncome = getVal('annualIncome');
+  const targetAmount = getVal('targetAmount');
+  const targetBucket = document.getElementById('targetBucket').value;
+  const benchType   = document.querySelector('input[name="bench"]:checked').value;
+
+  // Solve for extra if in backward mode
+  let extraMonthly = 0;
+  if (mode === 'backward') {
+    extraMonthly = solveForExtraMonthly(targetAmount, targetBucket);
+  }
+
+  const years = project(extraMonthly, targetBucket);
+  const startWealth = years[0].total;
+
+  // Build benchmark series
+  const benchData = years.map(y => {
+    if (benchType === 'salary') {
+      return salaryBenchmark(y.age, annualIncome);
+    } else {
+      return linearBenchmark(y.age, currentAge, retireAge, startWealth, targetAmount);
+    }
+  });
+
+  // ── Summary bar ──
+  document.getElementById('sc-retireAge').textContent = retireAge;
+  const atRetire = years.find(y => y.age === retireAge) || years[years.length - 1];
+  document.getElementById('sc-total').textContent = fmt(atRetire.total);
+
+  const benchAtRetire = benchData[years.findIndex(y => y.age === retireAge)] || 0;
+  document.getElementById('sc-bench').textContent = fmt(benchAtRetire);
+
+  const gap = atRetire.total - benchAtRetire;
+  const gapBadge = document.getElementById('sc-gap-badge');
+  if (gap > 0) {
+    gapBadge.textContent = fmt(gap) + ' ahead';
+    gapBadge.className = 'sc-status status-green';
+  } else if (gap > -benchAtRetire * 0.1) {
+    gapBadge.textContent = 'On track';
+    gapBadge.className = 'sc-status status-amber';
+  } else {
+    gapBadge.textContent = fmt(Math.abs(gap)) + ' behind';
+    gapBadge.className = 'sc-status status-red';
+  }
+
+  // CPF LIFE
+  const at65 = years.find(y => y.age === 65);
+  document.getElementById('sc-cpflife').textContent =
+    at65 ? fmtFull(Math.round(at65.cpfLifePayout)) + '/mo' : '–';
+
+  // ── Backward result ──
+  const brDiv = document.getElementById('backward-result');
+  if (mode === 'backward') {
+    brDiv.classList.add('show');
+    document.getElementById('br-amount').textContent = fmtFull(Math.round(extraMonthly));
+    const bucketLabels = { stocks: 'Stocks / ETFs', srs: 'SRS', ssb: 'SSB / T-bills' };
+    document.getElementById('br-bucket').textContent = bucketLabels[targetBucket];
+  } else {
+    brDiv.classList.remove('show');
+  }
+
+  // ── Chart ──
+  renderChart(years, benchData);
+
+  // ── Milestone cards ──
+  renderMilestones(years, benchData, currentAge);
+}
+
+// ══════════════════════════════════════════════════════
+//  CHART
+// ══════════════════════════════════════════════════════
+function renderChart(years, benchData) {
+  const labels = years.map(y => y.age);
+  const projData = years.map(y => Math.round(y.total));
+
+  if (chart) chart.destroy();
+
+  const ctx = document.getElementById('wealthChart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Projected wealth',
+          data: projData,
+          borderColor: '#7C3AED',
+          borderWidth: 2.5,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          tension: 0.3,
+          fill: {
+            target: 1,
+            above: 'rgba(16,185,129,0.12)',
+            below: 'rgba(239,68,68,0.12)',
+          },
+        },
+        {
+          label: 'Benchmark',
+          data: benchData.map(v => Math.round(v)),
+          borderColor: '#94A3B8',
+          borderWidth: 1.5,
+          borderDash: [6, 4],
+          pointRadius: 0,
+          tension: 0.3,
+          fill: false,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label(ctx) {
+              return ctx.dataset.label + ': ' + fmtFull(ctx.raw);
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { color: '#F1F1F5' },
+          ticks: {
+            color: '#9CA3AF',
+            font: { size: 11 },
+            callback(val, i) {
+              const age = this.getLabelForValue(val);
+              // Show every 5 years
+              return age % 5 === 0 ? 'Age ' + age : '';
+            },
+          },
+        },
+        y: {
+          grid: { color: '#F1F1F5' },
+          ticks: {
+            color: '#9CA3AF',
+            font: { size: 11 },
+            callback: v => fmt(v),
+          },
+          beginAtZero: true,
+        },
+      },
+    },
+  });
+}
+
+// ══════════════════════════════════════════════════════
+//  MILESTONE CARDS
+// ══════════════════════════════════════════════════════
+function renderMilestones(years, benchData, currentAge) {
+  const allMilestones = [
+    ...FIXED_MILESTONES,
+    ...customMilestones.map(m => ({ age: m.age, label: m.label, sg: false })),
+  ].sort((a, b) => a.age - b.age);
+
+  const grid = document.getElementById('milestonesGrid');
+  grid.innerHTML = '';
+
+  allMilestones.forEach(ms => {
+    if (ms.age <= currentAge) return;
+    const yd = years.find(y => y.age === ms.age);
+    if (!yd) return;
+    const bi = years.findIndex(y => y.age === ms.age);
+    const bench = benchData[bi] || 0;
+    const gap = yd.total - bench;
+    const pct = bench > 0 ? gap / bench : 0;
+
+    const card = document.createElement('div');
+    card.className = 'milestone-card' + (ms.sg ? ' sg-milestone' : '');
+
+    let gapClass = 'ahead', gapLabel = '▲ ' + fmt(gap) + ' ahead';
+    if (gap < 0 && Math.abs(pct) > 0.05) {
+      gapClass = 'behind'; gapLabel = '▼ ' + fmt(Math.abs(gap)) + ' behind';
+    } else if (Math.abs(pct) <= 0.05) {
+      gapClass = 'on-track'; gapLabel = '≈ On track';
+    }
+
+    const cpfLifeRow = ms.age >= 65 && yd.cpfLifePayout > 0
+      ? `<div class="mc-cpf-life">
+           <div class="mc-cpf-label">CPF LIFE est. monthly payout</div>
+           <div>${fmtFull(Math.round(yd.cpfLifePayout))}/month</div>
+         </div>` : '';
+
+    const cpfLabel = ms.age >= 55 ? 'CPF RA' : 'CPF OA + SA';
+    const cpfAmt   = ms.age >= 55 ? yd.cpfRA : (yd.cpfOA + yd.cpfSA);
+
+    card.innerHTML = `
+      <div class="mc-age">Age ${ms.age}</div>
+      <div class="mc-label">${ms.label}</div>
+      <div class="mc-total">${fmt(yd.total)}</div>
+      <div class="mc-breakdown">
+        ${cpfAmt > 0 ? `<div class="mc-row"><span class="mc-key"><span class="bucket-dot" style="background:#7C3AED;display:inline-block;width:8px;height:8px;border-radius:50%;"></span>${cpfLabel}</span><span class="mc-val">${fmt(cpfAmt)}</span></div>` : ''}
+        ${yd.srs > 0    ? `<div class="mc-row"><span class="mc-key"><span class="bucket-dot" style="background:#6366F1;display:inline-block;width:8px;height:8px;border-radius:50%;"></span>SRS</span><span class="mc-val">${fmt(yd.srs)}</span></div>` : ''}
+        ${yd.stocks > 0 ? `<div class="mc-row"><span class="mc-key"><span class="bucket-dot" style="background:#10B981;display:inline-block;width:8px;height:8px;border-radius:50%;"></span>Stocks / ETFs</span><span class="mc-val">${fmt(yd.stocks)}</span></div>` : ''}
+        ${yd.ssb > 0    ? `<div class="mc-row"><span class="mc-key"><span class="bucket-dot" style="background:#F59E0B;display:inline-block;width:8px;height:8px;border-radius:50%;"></span>SSB / T-bills</span><span class="mc-val">${fmt(yd.ssb)}</span></div>` : ''}
+        <hr class="mc-divider">
+        <div class="mc-row"><span class="mc-key">Benchmark</span><span class="mc-val">${fmt(bench)}</span></div>
+        <div class="mc-gap ${gapClass}">${gapLabel}</div>
+        ${cpfLifeRow}
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+// ══════════════════════════════════════════════════════
+//  UI ACTIONS
+// ══════════════════════════════════════════════════════
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-forward').classList.toggle('active', m === 'forward');
+  document.getElementById('btn-backward').classList.toggle('active', m === 'backward');
+  document.getElementById('backward-inputs').style.display = m === 'backward' ? 'block' : 'none';
+  recalc();
+}
+
+function toggleAccordion(header) {
+  header.classList.toggle('open');
+  const body = header.nextElementSibling;
+  body.classList.toggle('open');
+}
+
+function addMilestone() {
+  const age = parseInt(document.getElementById('newMilestoneAge').value);
+  const label = document.getElementById('newMilestoneLabel').value.trim() || 'Milestone';
+  if (!age || age < 18 || age > 90) return;
+  const id = Date.now();
+  customMilestones.push({ id, age, label });
+  document.getElementById('newMilestoneAge').value = '';
+  document.getElementById('newMilestoneLabel').value = '';
+  renderMilestoneList();
+  recalc();
+}
+
+function removeMilestone(id) {
+  customMilestones = customMilestones.filter(m => m.id !== id);
+  renderMilestoneList();
+  recalc();
+}
+
+function renderMilestoneList() {
+  const list = document.getElementById('milestoneList');
+  list.innerHTML = '';
+  [...FIXED_MILESTONES, ...customMilestones].forEach(m => {
+    const chip = document.createElement('div');
+    chip.className = 'milestone-chip';
+    chip.innerHTML = `
+      <span class="age-badge">${m.age}</span>
+      <span class="label">${m.label}${m.sg ? ' <span style="font-size:10px;color:var(--accent)">SG</span>' : ''}</span>
+      ${m.id ? `<button onclick="removeMilestone(${m.id})" title="Remove">×</button>` : ''}`;
+    list.appendChild(chip);
+  });
+}
+
+// Also trigger recalc on rate inputs
+document.querySelectorAll('.accordion-body input').forEach(el => {
+  el.addEventListener('input', recalc);
+});
+
+// ══════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════
+renderMilestoneList();
+recalc();
+</script>
+</body>
+</html>
