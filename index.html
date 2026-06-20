@@ -45,7 +45,7 @@
     .input-wrap { position: relative; }
     .input-wrap .prefix { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 13px; pointer-events: none; }
     .input-wrap .suffix { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 13px; pointer-events: none; }
-    .input-wrap input { padding-left: 22px; }
+    .input-wrap input { padding-left: 26px; }
     .input-wrap.has-suffix input { padding-right: 28px; }
     input[type="number"], input[type="text"] {
       width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius);
@@ -283,6 +283,41 @@
         </details>
       </div>
 
+      <!-- Study period -->
+      <div class="field">
+        <label style="cursor:pointer;user-select:none;flex-direction:row;align-items:center;">
+          <input type="checkbox" id="hasStudyPeriod" onchange="toggleStudyPeriod(); recalc();" style="width:auto;margin-right:6px;">
+          I have a study / low-income period
+        </label>
+      </div>
+      <div id="studyPeriodBody" style="display:none;flex-direction:column;gap:10px;">
+        <div class="field-row">
+          <div class="field">
+            <label>Study start age</label>
+            <input type="number" id="studyStartAge" value="22" min="15" max="80" oninput="recalc()">
+          </div>
+          <div class="field">
+            <label>Study end age</label>
+            <input type="number" id="studyEndAge" value="25" min="15" max="80" oninput="recalc()">
+          </div>
+        </div>
+        <div class="field">
+          <label>Monthly investment savings during study</label>
+          <div class="input-wrap">
+            <span class="prefix">$</span>
+            <input type="number" id="studyMonthlyInvest" value="0" oninput="recalc()">
+          </div>
+        </div>
+        <div class="field">
+          <label>Monthly CPF contributions during study</label>
+          <div class="input-wrap">
+            <span class="prefix">$</span>
+            <input type="number" id="studyMonthlyCPF" value="0" oninput="recalc()">
+          </div>
+          <div style="font-size:11px;color:var(--dim);margin-top:3px;">Full-time students generally have no CPF. Part-time workers may have a small amount.</div>
+        </div>
+      </div>
+
       <!-- Advanced toggle -->
       <div class="advanced-toggle" id="advancedToggle" onclick="toggleAdvanced()">
         <span>Break down by account type</span>
@@ -509,7 +544,18 @@ function getInputs() {
     for (const k of Object.keys(con)) if (adv.con[k] !== null) con[k] = adv.con[k];
   }
 
-  return { bal, con };
+  const hasStudy = document.getElementById('hasStudyPeriod').checked;
+  const study = hasStudy ? {
+    active: true,
+    startAge: getVal('studyStartAge'),
+    endAge:   getVal('studyEndAge'),
+    cpfOA:  getVal('studyMonthlyCPF') * CPF_OA_SA_RATIO,
+    cpfSA:  getVal('studyMonthlyCPF') * (1 - CPF_OA_SA_RATIO),
+    stocks: getVal('studyMonthlyInvest'),
+    srs: 0, ssb: 0,
+  } : { active: false };
+
+  return { bal, con, study };
 }
 
 // ══════════════════════════════════════════════
@@ -518,7 +564,7 @@ function getInputs() {
 function project(investRate) {
   const currentAge = getVal('currentAge');
   const retireAge  = getVal('retireAge');
-  const { bal, con } = getInputs();
+  const { bal, con, study } = getInputs();
 
   const r = {
     cpfOA:  getVal('rate_cpfOA') / 100 || 0.025,
@@ -560,16 +606,18 @@ function project(investRate) {
     });
 
     const contributing = age < retireAge;
+    const inStudy = study.active && age >= study.startAge && age < study.endAge;
+    const c = (contributing && inStudy) ? study : con;
     if (age < 55) {
-      cpfOA = cpfOA * (1 + r.cpfOA) + (contributing ? con.cpfOA * 12 : 0);
-      cpfSA = cpfSA * (1 + r.cpfSA) + (contributing ? con.cpfSA * 12 : 0);
+      cpfOA = cpfOA * (1 + r.cpfOA) + (contributing ? c.cpfOA * 12 : 0);
+      cpfSA = cpfSA * (1 + r.cpfSA) + (contributing ? c.cpfSA * 12 : 0);
     } else {
-      cpfOA = cpfOA * (1 + r.cpfOA) + (contributing ? con.cpfOA * 12 : 0);
+      cpfOA = cpfOA * (1 + r.cpfOA) + (contributing ? c.cpfOA * 12 : 0);
       cpfRA = cpfRA * (1 + r.cpfSA);
     }
-    srs    = srs    * (1 + r.srs)    + (contributing ? con.srs    * 12 : 0);
-    stocks = stocks * (1 + r.stocks) + (contributing ? con.stocks * 12 : 0);
-    ssb    = ssb    * (1 + r.ssb)    + (contributing ? con.ssb    * 12 : 0);
+    srs    = srs    * (1 + r.srs)    + (contributing ? c.srs    * 12 : 0);
+    stocks = stocks * (1 + r.stocks) + (contributing ? c.stocks * 12 : 0);
+    ssb    = ssb    * (1 + r.ssb)    + (contributing ? c.ssb    * 12 : 0);
   }
   return years;
 }
@@ -848,6 +896,11 @@ function renderYearTable(years, retireAge) {
 // ══════════════════════════════════════════════
 //  UI
 // ══════════════════════════════════════════════
+function toggleStudyPeriod() {
+  const on = document.getElementById('hasStudyPeriod').checked;
+  document.getElementById('studyPeriodBody').style.display = on ? 'flex' : 'none';
+}
+
 function toggleAdvanced() {
   advancedOpen = !advancedOpen;
   document.getElementById('advancedToggle').classList.toggle('open', advancedOpen);
