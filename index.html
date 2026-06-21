@@ -161,6 +161,13 @@
     .cpf-event .desc { font-size: 12px; color: var(--text); line-height: 1.5; }
     .cpf-event .desc strong { color: var(--accent); }
 
+    /* Mode toggle */
+    .mode-toggle { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .mode-btn { flex: 1; padding: 8px 10px; font-size: 12px; font-weight: 600; background: transparent; border: none; cursor: pointer; color: var(--muted); transition: all 0.15s; font-family: inherit; }
+    .mode-btn.active { background: var(--accent); color: #fff; }
+    /* Rate slider */
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+
     /* Responsive */
     @media (max-width: 900px) {
       .layout { grid-template-columns: 1fr; }
@@ -195,22 +202,33 @@
       <div class="step-title">Your goal</div>
     </div>
     <div class="step-body">
+      <div class="field">
+        <label>How do you want to plan?</label>
+        <div class="mode-toggle">
+          <button class="mode-btn active" id="modeA" onclick="setMode('solve')">Find required return %</button>
+          <button class="mode-btn" id="modeB" onclick="setMode('set')">Set my return rate</button>
+        </div>
+      </div>
       <div class="field-row">
-        <div class="field">
+        <div id="retireAgeField" class="field">
           <label>I want to retire at age</label>
-          <input type="number" id="retireAge" value="40" min="20" max="85" oninput="recalc()">
+          <input type="number" id="retireAge" value="65" min="20" max="85" oninput="recalc()">
         </div>
         <div class="field">
           <label>My current age</label>
           <input type="number" id="currentAge" value="28" min="15" max="80" oninput="recalc()">
         </div>
       </div>
+      <div id="manualRateField" class="field" style="display:none;">
+        <label>Annual investment return rate (%)</label>
+        <input type="number" id="manualRate" value="7" step="0.5" min="0" max="30" oninput="syncSlider(); recalc()">
+        <input type="range" id="manualRateSlider" value="7" min="0" max="20" step="0.5" oninput="document.getElementById('manualRate').value=this.value; recalc()" style="margin-top:6px;">
+        <div style="font-size:11px;color:var(--dim);margin-top:3px;">7% is the historical average for a global index ETF (e.g. VWRA).</div>
+      </div>
       <div class="field">
         <label>Monthly spending in retirement</label>
-        <div class="input-wrap">
-          <input type="number" id="monthlySpend" value="5000" oninput="recalc()">
-        </div>
-        <div style="font-size:11px;color:var(--dim);margin-top:3px;">This is how much you want to spend each month when retired.</div>
+        <input type="number" id="monthlySpend" value="5000" oninput="recalc()">
+        <div style="font-size:11px;color:var(--dim);margin-top:3px;">How much you want to spend each month when retired.</div>
       </div>
     </div>
   </div>
@@ -223,14 +241,17 @@
     </div>
     <div class="step-body">
       <div class="field">
-        <label>Investment savings (stocks, SRS, cash)</label>
-        <div class="input-wrap">
-          <input type="number" id="currentInvest" value="50000" oninput="recalc()">
-        </div>
+        <label>Investment savings (stocks, SRS, ETFs)</label>
+        <input type="number" id="currentInvest" value="50000" oninput="recalc()">
         <details class="cpf-info">
           <summary>What counts as investment savings?</summary>
-          <div class="cpf-info-body">Money you can freely invest or access — e.g. stocks, ETFs, SRS account, cash savings, T-bills, SSB. <strong>Does not include CPF</strong> (that's the field below, since it has different rules).</div>
+          <div class="cpf-info-body">Money actively invested — stocks, ETFs, SRS account, T-bills, SSB. <strong>Does not include CPF</strong> (that's below) or cash sitting in a bank account (that's the next field).</div>
         </details>
+      </div>
+      <div class="field">
+        <label>Cash savings (bank account / emergency fund)</label>
+        <input type="number" id="currentCash" value="10000" oninput="recalc()">
+        <div style="font-size:11px;color:var(--dim);margin-top:3px;">Money sitting in savings/current accounts. Earns ~1%/yr.</div>
       </div>
       <div class="field">
         <label>CPF balance (OA + SA combined)</label>
@@ -259,21 +280,23 @@
     </div>
     <div class="step-body">
       <div class="field">
-        <label>Monthly investment savings</label>
-        <div class="input-wrap">
-          <input type="number" id="monthlyInvest" value="2000" oninput="recalc()">
-        </div>
-        <div style="font-size:11px;color:var(--dim);margin-top:3px;">How much you put into stocks, ETFs, SRS, or savings each month.</div>
+        <label>Monthly gross salary</label>
+        <input type="number" id="monthlySalary" value="5000" oninput="recalc()">
+        <div id="cpfCalcDisplay" style="font-size:11px;color:var(--dim);margin-top:3px;"></div>
+        <details class="cpf-info">
+          <summary>How is CPF calculated?</summary>
+          <div class="cpf-info-body">For employees under 55: you contribute <strong>20%</strong> and your employer adds <strong>17%</strong> = 37% total. This is split between OA (79.3%) and SA (20.7%). The tool calculates this automatically from your salary.</div>
+        </details>
       </div>
       <div class="field">
-        <label>Monthly CPF contributions (OA + SA)</label>
-        <div class="input-wrap">
-          <input type="number" id="monthlyCPF" value="1160" oninput="recalc()">
-        </div>
-        <details class="cpf-info">
-          <summary>How do I find this number?</summary>
-          <div class="cpf-info-body">Check your payslip. The total CPF contribution is <strong>employee + employer</strong>. For example, on a $5,000/month salary: you contribute $1,000 (20%) and your employer adds $850 (17%) = <strong>$1,850/month total</strong>. Check CPF's website for your exact rates based on age.</div>
-        </details>
+        <label>Monthly investment amount</label>
+        <input type="number" id="monthlyInvest" value="1000" oninput="recalc()">
+        <div style="font-size:11px;color:var(--dim);margin-top:3px;">How much you actively put into stocks, ETFs, or SRS each month.</div>
+      </div>
+      <div class="field">
+        <label>Monthly living expenses</label>
+        <input type="number" id="monthlyExpenses" value="2000" oninput="recalc()">
+        <div id="surplusDisplay" style="font-size:11px;margin-top:3px;"></div>
       </div>
 
       <!-- Study period -->
@@ -358,7 +381,7 @@
 
   <!-- Hero card -->
   <div class="hero-card">
-    <div class="hero-eyebrow">Required annual investment return</div>
+    <div class="hero-eyebrow" id="heroEyebrow">Required annual investment return</div>
     <div class="hero-rate" id="heroRate">–</div>
     <div class="hero-sub" id="heroSub">to retire at age – on $–/month</div>
     <span class="hero-context" id="heroContext"></span>
@@ -465,10 +488,24 @@
 // ══════════════════════════════════════════════
 //  CONSTANTS
 // ══════════════════════════════════════════════
-const CPF_OA_SA_RATIO = 23 / 29; // OA share of combined (23% OA / 6% SA = 29% total employee+employer split into OA/SA)
+const CPF_OA_SA_RATIO = 23 / 29;
 const BENCH_RATE = 0.07;
 let chart = null;
 let advancedOpen = false;
+let currentMode = 'solve';
+
+function setMode(m) {
+  currentMode = m;
+  document.getElementById('modeA').classList.toggle('active', m === 'solve');
+  document.getElementById('modeB').classList.toggle('active', m === 'set');
+  document.getElementById('retireAgeField').style.display = m === 'solve' ? '' : 'none';
+  document.getElementById('manualRateField').style.display = m === 'set' ? '' : 'none';
+  recalc();
+}
+
+function syncSlider() {
+  document.getElementById('manualRateSlider').value = getVal('manualRate');
+}
 
 // ══════════════════════════════════════════════
 //  HELPERS
@@ -494,8 +531,13 @@ function getValOrNull(id) {
 function getInputs() {
   const currentInvest = getVal('currentInvest');
   const currentCPF    = getVal('currentCPF');
+  const currentCash   = getVal('currentCash');
   const monthlyInvest = getVal('monthlyInvest');
-  const monthlyCPF    = getVal('monthlyCPF');
+  const salary        = getVal('monthlySalary');
+  const expenses      = getVal('monthlyExpenses');
+  const monthlyCPF    = salary * 0.37;
+  const takehome      = salary * 0.80; // after employee 20% CPF
+  const surplus       = Math.max(0, takehome - expenses - monthlyInvest);
 
   // Simple mode defaults
   let bal = {
@@ -504,6 +546,7 @@ function getInputs() {
     srs:    0,
     stocks: currentInvest,
     ssb:    0,
+    cash:   currentCash,
   };
   let con = {
     cpfOA:  monthlyCPF * CPF_OA_SA_RATIO,
@@ -511,6 +554,7 @@ function getInputs() {
     srs:    0,
     stocks: monthlyInvest,
     ssb:    0,
+    cash:   surplus,
   };
 
   // Advanced overrides (only when a value is explicitly entered)
@@ -531,8 +575,8 @@ function getInputs() {
         ssb:    getValOrNull('con_ssb'),
       },
     };
-    for (const k of Object.keys(bal)) if (adv.bal[k] !== null) bal[k] = adv.bal[k];
-    for (const k of Object.keys(con)) if (adv.con[k] !== null) con[k] = adv.con[k];
+    for (const k of Object.keys(bal)) if (adv.bal[k] != null) bal[k] = adv.bal[k];
+    for (const k of Object.keys(con)) if (adv.con[k] != null) con[k] = adv.con[k];
   }
 
   const hasStudy = document.getElementById('hasStudyPeriod').checked;
@@ -543,7 +587,7 @@ function getInputs() {
     cpfOA:  getVal('studyMonthlyCPF') * CPF_OA_SA_RATIO,
     cpfSA:  getVal('studyMonthlyCPF') * (1 - CPF_OA_SA_RATIO),
     stocks: getVal('studyMonthlyInvest'),
-    srs: 0, ssb: 0,
+    srs: 0, ssb: 0, cash: 0,
   } : { active: false };
 
   return { bal, con, study };
@@ -566,7 +610,7 @@ function project(investRate) {
   };
 
   let cpfOA = bal.cpfOA, cpfSA = bal.cpfSA, cpfRA = 0;
-  let srs = bal.srs, stocks = bal.stocks, ssb = bal.ssb;
+  let srs = bal.srs, stocks = bal.stocks, ssb = bal.ssb, cash = bal.cash;
   const frs2025 = 213000;
   let raCreated = false, cpfLifePayout = 0;
   const years = [];
@@ -586,12 +630,13 @@ function project(investRate) {
       cpfLifePayout = cpfRA * (1500 / 213000);
     }
 
-    const liquid = Math.max(0, srs) + Math.max(0, stocks) + Math.max(0, ssb);
+    const liquid = Math.max(0, srs) + Math.max(0, stocks) + Math.max(0, ssb) + Math.max(0, cash);
     const cpfTotal = Math.max(0, cpfOA) + Math.max(0, cpfSA) + Math.max(0, cpfRA);
     years.push({
       age,
       cpfOA: Math.max(0, cpfOA), cpfSA: Math.max(0, cpfSA), cpfRA: Math.max(0, cpfRA),
       srs: Math.max(0, srs), stocks: Math.max(0, stocks), ssb: Math.max(0, ssb),
+      cash: Math.max(0, cash),
       liquid, cpfTotal, total: liquid + cpfTotal,
       cpfLifePayout,
     });
@@ -609,6 +654,7 @@ function project(investRate) {
     srs    = srs    * (1 + r.srs)    + (contributing ? c.srs    * 12 : 0);
     stocks = stocks * (1 + r.stocks) + (contributing ? c.stocks * 12 : 0);
     ssb    = ssb    * (1 + r.ssb)    + (contributing ? c.ssb    * 12 : 0);
+    cash   = cash   * 1.01           + (contributing ? c.cash   * 12 : 0);
   }
   return years;
 }
@@ -663,32 +709,82 @@ function rateContext(rate) {
 //  MAIN RECALC
 // ══════════════════════════════════════════════
 function recalc() {
-  const currentAge = getVal('currentAge');
-  const retireAge  = getVal('retireAge');
+  const currentAge   = getVal('currentAge');
   const monthlySpend = getVal('monthlySpend');
-  const target = targetWealth();
+  const target       = targetWealth();
+  const salary       = getVal('monthlySalary');
+  const expenses     = getVal('monthlyExpenses');
+  const invest       = getVal('monthlyInvest');
 
-  const requiredRate = solveForReturnRate(target, retireAge);
-  const displayRate  = requiredRate !== null ? requiredRate : 0.30;
-  const years = project(displayRate);
+  // ── CPF auto-calc display ──
+  const empCPF = salary * 0.20, erCPF = salary * 0.17;
+  document.getElementById('cpfCalcDisplay').textContent =
+    `Auto-calculated CPF: $${Math.round(empCPF + erCPF)}/month (you $${Math.round(empCPF)} + employer $${Math.round(erCPF)})`;
 
-  // ── Hero ──
-  const heroRateEl = document.getElementById('heroRate');
-  if (requiredRate === null) {
-    heroRateEl.textContent = '>30%';
-    heroRateEl.style.color = 'var(--red)';
+  // ── Surplus display ──
+  const takehome = salary * 0.80;
+  const surplus  = takehome - expenses - invest;
+  const surplusEl = document.getElementById('surplusDisplay');
+  if (surplus >= 0) {
+    surplusEl.textContent = `Monthly cash surplus: $${Math.round(surplus)} saved to bank`;
+    surplusEl.style.color = 'var(--muted)';
   } else {
-    heroRateEl.textContent = (requiredRate * 100).toFixed(1) + '%';
-    heroRateEl.style.color = requiredRate <= 0.08 ? 'var(--green)' : requiredRate <= 0.12 ? 'var(--amber)' : 'var(--red)';
+    surplusEl.textContent = `⚠️ Spending + investing exceeds take-home by $${Math.round(-surplus)}/month`;
+    surplusEl.style.color = 'var(--red)';
   }
-  document.getElementById('heroSub').textContent =
-    `to retire at age ${retireAge} on ${fmtFull(monthlySpend)}/month`;
 
-  const ctx = rateContext(requiredRate);
-  const heroCtx = document.getElementById('heroContext');
-  heroCtx.textContent = ctx.icon + ' ' + ctx.label;
-  heroCtx.style.background = ctx.bg;
-  heroCtx.style.color = ctx.color;
+  const heroRateEl = document.getElementById('heroRate');
+  const heroCtx    = document.getElementById('heroContext');
+  let retireAge, displayRate, years;
+
+  if (currentMode === 'solve') {
+    retireAge = getVal('retireAge');
+    const requiredRate = solveForReturnRate(target, retireAge);
+    displayRate = requiredRate !== null ? requiredRate : 0.30;
+    years = project(displayRate);
+
+    if (requiredRate === null) {
+      heroRateEl.textContent = '>30%';
+      heroRateEl.style.color = 'var(--red)';
+    } else {
+      heroRateEl.textContent = (requiredRate * 100).toFixed(1) + '%';
+      heroRateEl.style.color = requiredRate <= 0.08 ? 'var(--green)' : requiredRate <= 0.12 ? 'var(--amber)' : 'var(--red)';
+    }
+    document.getElementById('heroSub').textContent =
+      `annual return needed to retire at age ${retireAge} on ${fmtFull(monthlySpend)}/month`;
+    document.getElementById('heroEyebrow').textContent = 'Required annual investment return';
+
+    const ctx = rateContext(requiredRate);
+    heroCtx.textContent = ctx.icon + ' ' + ctx.label;
+    heroCtx.style.background = ctx.bg;
+    heroCtx.style.color = ctx.color;
+  } else {
+    // Mode B — set rate, find retirement age
+    const manualRate = getVal('manualRate') / 100;
+    document.getElementById('manualRateSlider').value = getVal('manualRate');
+    const solvedAge = solveForRetireAge(manualRate, target);
+    retireAge   = solvedAge || 90;
+    displayRate = manualRate;
+    years = project(displayRate);
+
+    if (solvedAge) {
+      heroRateEl.textContent = 'Age ' + solvedAge;
+      heroRateEl.style.color = solvedAge <= 55 ? 'var(--green)' : solvedAge <= 65 ? 'var(--amber)' : 'var(--red)';
+      document.getElementById('heroSub').textContent =
+        `earliest retirement at ${getVal('manualRate')}% annual returns on ${fmtFull(monthlySpend)}/month`;
+    } else {
+      heroRateEl.textContent = 'Never';
+      heroRateEl.style.color = 'var(--red)';
+      document.getElementById('heroSub').textContent =
+        `${getVal('manualRate')}% returns never reaches your target — save more or spend less`;
+    }
+    document.getElementById('heroEyebrow').textContent = 'Earliest retirement age';
+
+    const ctx = rateContext(manualRate);
+    heroCtx.textContent = ctx.icon + ' ' + ctx.label + ` (${getVal('manualRate')}% rate)`;
+    heroCtx.style.background = ctx.bg;
+    heroCtx.style.color = ctx.color;
+  }
 
   // ── CPF notice ──
   document.getElementById('cpfNotice').classList.toggle('show', retireAge < 55);
@@ -703,14 +799,24 @@ function recalc() {
     at65 && at65.cpfLifePayout > 0 ? fmtFull(Math.round(at65.cpfLifePayout)) + '/mo' : 'N/A';
 
   // ── Gap card ──
-  const retireAt7 = solveForRetireAge(BENCH_RATE, target);
   const gapText = document.getElementById('gapText');
-  if (retireAt7 === null) {
-    gapText.innerHTML = `At <strong>7% annual returns</strong> (historical global ETF average), your savings <strong>never reach your target</strong> — try saving more or spending less in retirement.`;
-  } else if (retireAt7 <= retireAge) {
-    gapText.innerHTML = `At <strong>7% annual returns</strong> (historical global ETF average), you could retire by <strong>age ${retireAt7}</strong> — ${retireAge - retireAt7} years earlier than your goal.`;
+  if (currentMode === 'solve') {
+    const retireAt7 = solveForRetireAge(BENCH_RATE, target);
+    if (retireAt7 === null) {
+      gapText.innerHTML = `At <strong>7% annual returns</strong> (historical global ETF average), your savings <strong>never reach your target</strong> — try saving more or spending less in retirement.`;
+    } else if (retireAt7 <= retireAge) {
+      gapText.innerHTML = `At <strong>7% annual returns</strong> (historical global ETF average), you could retire by <strong>age ${retireAt7}</strong> — ${retireAge - retireAt7} years earlier than your goal.`;
+    } else {
+      gapText.innerHTML = `At <strong>7% annual returns</strong> (historical global ETF average), you'd reach your target at <strong>age ${retireAt7}</strong> — ${retireAt7 - retireAge} years later than your goal.`;
+    }
   } else {
-    gapText.innerHTML = `At <strong>7% annual returns</strong> (historical global ETF average), you'd reach your target at <strong>age ${retireAt7}</strong> — ${retireAt7 - retireAge} years later than your goal.`;
+    const manualRate = getVal('manualRate') / 100;
+    const reqRate = solveForReturnRate(target, retireAge);
+    if (reqRate === null) {
+      gapText.innerHTML = `To retire at <strong>age ${retireAge}</strong>, you'd need <strong>more than 30%</strong> annual returns — try a later retirement age or save more.`;
+    } else {
+      gapText.innerHTML = `To retire at <strong>age ${retireAge}</strong> on ${fmtFull(monthlySpend)}/month, you'd need <strong>${(reqRate*100).toFixed(1)}% annual returns</strong>.`;
+    }
   }
 
   // ── Chart ──
@@ -843,7 +949,7 @@ function renderYearTable(years, retireAge) {
   const body = document.getElementById('yearTableBody');
   body.innerHTML = '';
   const { con } = getInputs();
-  const annualInvest = (con.stocks + con.srs + con.ssb) * 12;
+  const annualInvest = (con.stocks + con.srs + con.ssb + con.cash) * 12;
 
   const showAges = new Set();
   years.forEach(y => { if (y.age % 5 === 0) showAges.add(y.age); });
