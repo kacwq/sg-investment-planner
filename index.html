@@ -207,6 +207,7 @@
         <div class="mode-toggle">
           <button class="mode-btn active" id="modeA" onclick="setMode('solve')">Find required return %</button>
           <button class="mode-btn" id="modeB" onclick="setMode('set')">Set my return rate</button>
+          <button class="mode-btn" id="modeC" onclick="setMode('contrib')">How much to invest?</button>
         </div>
       </div>
       <div class="field-row">
@@ -224,6 +225,24 @@
         <input type="number" id="manualRate" value="7" step="0.5" min="0" max="30" oninput="syncSlider(); recalc()">
         <input type="range" id="manualRateSlider" value="7" min="0" max="20" step="0.5" oninput="document.getElementById('manualRate').value=this.value; recalc()" style="margin-top:6px;">
         <div style="font-size:11px;color:var(--dim);margin-top:3px;">7% is the historical average for a global index ETF (e.g. VWRA).</div>
+      </div>
+      <div id="modeCFields" style="display:none;flex-direction:column;gap:10px;">
+        <div class="field-row">
+          <div class="field">
+            <label>I want to have ($)</label>
+            <input type="number" id="targetAmount" value="500000" oninput="recalc()">
+          </div>
+          <div class="field">
+            <label>By age</label>
+            <input type="number" id="targetAge" value="45" min="20" max="85" oninput="recalc()">
+          </div>
+        </div>
+        <div class="field">
+          <label>At annual return rate (%)</label>
+          <input type="number" id="contribRate" value="7" step="0.5" min="0" max="30" oninput="syncContribSlider(); recalc()">
+          <input type="range" id="contribRateSlider" value="7" min="0" max="20" step="0.5" oninput="document.getElementById('contribRate').value=this.value; recalc()" style="margin-top:6px;">
+          <div style="font-size:11px;color:var(--dim);margin-top:3px;">7% = historical global ETF average. Adjust to see how rate affects required savings.</div>
+        </div>
       </div>
       <div class="field">
         <label>Monthly spending in retirement</label>
@@ -498,13 +517,43 @@ function setMode(m) {
   currentMode = m;
   document.getElementById('modeA').classList.toggle('active', m === 'solve');
   document.getElementById('modeB').classList.toggle('active', m === 'set');
-  document.getElementById('retireAgeField').style.display = m === 'solve' ? '' : 'none';
+  document.getElementById('modeC').classList.toggle('active', m === 'contrib');
+  document.getElementById('retireAgeField').style.display  = m === 'solve' ? '' : 'none';
   document.getElementById('manualRateField').style.display = m === 'set' ? '' : 'none';
+  document.getElementById('modeCFields').style.display     = m === 'contrib' ? 'flex' : 'none';
+  const investEl = document.getElementById('monthlyInvest');
+  investEl.readOnly = m === 'contrib';
+  investEl.style.background = m === 'contrib' ? 'var(--bg)' : '';
   recalc();
 }
 
 function syncSlider() {
   document.getElementById('manualRateSlider').value = getVal('manualRate');
+}
+
+function syncContribSlider() {
+  document.getElementById('contribRateSlider').value = getVal('contribRate');
+}
+
+function solveForContribution(rate, targetAge, wealthTarget) {
+  const el = document.getElementById('monthlyInvest');
+  const orig = el.value;
+  el.value = 50000;
+  const atMax = project(rate).find(y => y.age === targetAge);
+  if (!atMax || atMax.total < wealthTarget) { el.value = orig; return null; }
+  el.value = 0;
+  const atZero = project(rate).find(y => y.age === targetAge);
+  if (atZero && atZero.total >= wealthTarget) { el.value = 0; return 0; }
+  let lo = 0, hi = 50000, result = 0;
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2;
+    el.value = mid;
+    const at = project(rate).find(y => y.age === targetAge);
+    if (!at || at.total < wealthTarget) lo = mid;
+    else { hi = mid; result = mid; }
+  }
+  el.value = result;
+  return result;
 }
 
 // ══════════════════════════════════════════════
@@ -758,6 +807,35 @@ function recalc() {
     heroCtx.textContent = ctx.icon + ' ' + ctx.label;
     heroCtx.style.background = ctx.bg;
     heroCtx.style.color = ctx.color;
+  } else if (currentMode === 'contrib') {
+    // Mode C — set target amount + age + rate, find required monthly contribution
+    const rate   = getVal('contribRate') / 100;
+    document.getElementById('contribRateSlider').value = getVal('contribRate');
+    const tAge   = getVal('targetAge');
+    const tAmt   = getVal('targetAmount');
+    const solved = solveForContribution(rate, tAge, tAmt);
+    retireAge    = tAge;
+    displayRate  = rate;
+    years = project(rate);
+
+    if (solved === null) {
+      heroRateEl.textContent = '>$50K/mo';
+      heroRateEl.style.color = 'var(--red)';
+      document.getElementById('heroSub').textContent =
+        `even $50,000/month can't reach ${fmt(tAmt)} by age ${tAge} — try a later age or higher rate`;
+    } else {
+      heroRateEl.textContent = fmtFull(Math.round(solved)) + '/mo';
+      heroRateEl.style.color = solved <= 2000 ? 'var(--green)' : solved <= 6000 ? 'var(--amber)' : 'var(--red)';
+      document.getElementById('heroSub').textContent =
+        `monthly investment to reach ${fmt(tAmt)} by age ${tAge} at ${getVal('contribRate')}% returns`;
+    }
+    document.getElementById('heroEyebrow').textContent = 'Required monthly investment';
+
+    const ctx = rateContext(rate);
+    heroCtx.textContent = ctx.icon + ' ' + ctx.label + ` (${getVal('contribRate')}% rate)`;
+    heroCtx.style.background = ctx.bg;
+    heroCtx.style.color = ctx.color;
+
   } else {
     // Mode B — set rate, find retirement age
     const manualRate = getVal('manualRate') / 100;
@@ -808,6 +886,17 @@ function recalc() {
       gapText.innerHTML = `At <strong>7% annual returns</strong> (historical global ETF average), you could retire by <strong>age ${retireAt7}</strong> — ${retireAge - retireAt7} years earlier than your goal.`;
     } else {
       gapText.innerHTML = `At <strong>7% annual returns</strong> (historical global ETF average), you'd reach your target at <strong>age ${retireAt7}</strong> — ${retireAt7 - retireAge} years later than your goal.`;
+    }
+  } else if (currentMode === 'contrib') {
+    const tAmt = getVal('targetAmount');
+    const tAge = getVal('targetAge');
+    const retireAt7 = solveForRetireAge(BENCH_RATE, tAmt);
+    if (retireAt7 === null) {
+      gapText.innerHTML = `At <strong>7% returns</strong>, you'd never reach ${fmt(tAmt)} with your current savings alone — increase contributions or extend the timeline.`;
+    } else if (retireAt7 <= tAge) {
+      gapText.innerHTML = `At <strong>7% returns</strong>, your savings could reach ${fmt(tAmt)} by <strong>age ${retireAt7}</strong> — ${tAge - retireAt7} years earlier than your goal.`;
+    } else {
+      gapText.innerHTML = `At <strong>7% returns</strong>, you'd reach ${fmt(tAmt)} by <strong>age ${retireAt7}</strong> — ${retireAt7 - tAge} years later than your goal of age ${tAge}.`;
     }
   } else {
     const manualRate = getVal('manualRate') / 100;
