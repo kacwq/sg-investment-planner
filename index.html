@@ -457,9 +457,20 @@
         <div class="cp-row"><span class="cp-k">Target</span><span class="cp-v" id="cpTarget">–</span></div>
         <div class="cp-row"><span class="cp-k">Total contributed</span><span class="cp-v" id="cpContrib">–</span></div>
         <div class="cp-row"><span class="cp-k">Growth from returns</span><span class="cp-v" id="cpGrowth" style="color:var(--green)">–</span></div>
+        <div class="cp-row"><span class="cp-k">Cash savings</span><span class="cp-v" id="cpCash" style="color:var(--muted)">–</span></div>
       </div>
     </div>
     <div class="chart-wrap"><canvas id="wealthChart"></canvas></div>
+    <div style="padding:10px 0 0;">
+      <input type="range" id="ageSlider" min="20" max="90" step="1" value="65"
+        style="width:100%;accent-color:var(--accent);"
+        oninput="updateChartPanel(parseInt(this.value))">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:2px;">
+        <span id="sliderMinLabel">Age 20</span>
+        <span>← drag to explore →</span>
+        <span id="sliderMaxLabel">Age 90</span>
+      </div>
+    </div>
   </div>
 
   <!-- Milestone cards -->
@@ -526,6 +537,21 @@ const BENCH_RATE = 0.07;
 let chart = null;
 let advancedOpen = false;
 let currentMode = 'solve';
+let lastYears = [];
+
+function updateChartPanel(age) {
+  const y = lastYears.find(r => r.age === age);
+  if (!y) return;
+  const panel = document.getElementById('chartDataPanel');
+  panel.style.display = '';
+  document.getElementById('cpAge').textContent     = 'Age ' + age;
+  document.getElementById('cpTotal').textContent   = fmtFull(y.investedTotal);
+  document.getElementById('cpTarget').textContent  = fmtFull(y.target || 0);
+  document.getElementById('cpContrib').textContent = fmtFull(y.contributed);
+  document.getElementById('cpGrowth').textContent  = fmtFull(Math.max(0, y.investedTotal - y.contributed));
+  document.getElementById('cpCash').textContent    = fmtFull(y.cash);
+  document.getElementById('ageSlider').value = age;
+}
 
 function setMode(m) {
   currentMode = m;
@@ -674,7 +700,7 @@ function project(investRate) {
 
   let cpfOA = bal.cpfOA, cpfSA = bal.cpfSA, cpfRA = 0;
   let srs = bal.srs, stocks = bal.stocks, ssb = bal.ssb, cash = bal.cash;
-  let cumContrib = bal.cpfOA + bal.cpfSA + bal.srs + bal.stocks + bal.ssb + bal.cash;
+  let cumContrib = bal.cpfOA + bal.cpfSA + bal.srs + bal.stocks + bal.ssb;
   const frs2025 = 213000;
   let raCreated = false, cpfLifePayout = 0;
   const years = [];
@@ -694,16 +720,19 @@ function project(investRate) {
       cpfLifePayout = cpfRA * (1500 / 213000);
     }
 
-    const liquid = Math.max(0, srs) + Math.max(0, stocks) + Math.max(0, ssb) + Math.max(0, cash);
+    const liquid = Math.max(0, srs) + Math.max(0, stocks) + Math.max(0, ssb);
     const cpfTotal = Math.max(0, cpfOA) + Math.max(0, cpfSA) + Math.max(0, cpfRA);
+    const cashAmt = Math.max(0, cash);
+    const investedTotal = liquid + cpfTotal;
     years.push({
       age,
       cpfOA: Math.max(0, cpfOA), cpfSA: Math.max(0, cpfSA), cpfRA: Math.max(0, cpfRA),
       srs: Math.max(0, srs), stocks: Math.max(0, stocks), ssb: Math.max(0, ssb),
-      cash: Math.max(0, cash),
-      liquid, cpfTotal, total: liquid + cpfTotal,
+      cash: cashAmt,
+      liquid, cpfTotal, investedTotal, total: investedTotal,
       cpfLifePayout,
       contributed: Math.round(cumContrib),
+      target: 0,
     });
 
     const contributing = age < retireAge;
@@ -721,7 +750,7 @@ function project(investRate) {
     ssb    = ssb    * (1 + r.ssb)    + (contributing ? c.ssb    * 12 : 0);
     cash   = cash   * 1.01           + (contributing ? c.cash   * 12 : 0);
     if (contributing) {
-      cumContrib += (c.cpfOA + c.cpfSA + c.stocks + c.srs + c.ssb + c.cash) * 12;
+      cumContrib += (c.cpfOA + c.cpfSA + c.stocks + c.srs + c.ssb) * 12;
     }
   }
   return years;
@@ -928,6 +957,16 @@ function recalc() {
   }
 
   // ── Chart ──
+  years.forEach(y => y.target = target);
+  lastYears = years;
+  const slider = document.getElementById('ageSlider');
+  const sliderMax = Math.max(90, retireAge + 10);
+  slider.min = currentAge;
+  slider.max = sliderMax;
+  document.getElementById('sliderMinLabel').textContent = 'Age ' + currentAge;
+  document.getElementById('sliderMaxLabel').textContent = 'Age ' + sliderMax;
+  slider.value = retireAge;
+  updateChartPanel(retireAge);
   renderChart(years, target, retireAge);
 
   // ── Milestones ──
@@ -987,18 +1026,7 @@ function renderChart(years, target, retireAge) {
             if (context.tooltip.opacity === 0) return;
             const i = context.tooltip.dataPoints?.[0]?.dataIndex;
             if (i == null) return;
-            const age       = context.chart.data.labels[i];
-            const projected = context.chart.data.datasets[0].data[i];
-            const tgt       = context.chart.data.datasets[1].data[i];
-            const contrib   = contributedData[i];
-            const growth    = Math.max(0, projected - contrib);
-            const panel = document.getElementById('chartDataPanel');
-            panel.style.display = '';
-            document.getElementById('cpAge').textContent    = 'Age ' + age;
-            document.getElementById('cpTotal').textContent  = fmtFull(projected);
-            document.getElementById('cpTarget').textContent = fmtFull(tgt);
-            document.getElementById('cpContrib').textContent = fmtFull(contrib);
-            document.getElementById('cpGrowth').textContent  = fmtFull(growth);
+            updateChartPanel(context.chart.data.labels[i]);
           },
         },
       },
@@ -1058,6 +1086,7 @@ function renderMilestones(years, target, currentAge, retireAge) {
       <div class="mc-total">${fmt(yd.total)}</div>
       <div class="mc-row"><span class="k">${liquidLabel}</span><span class="v">${fmt(liquidAmt)}</span></div>
       ${cpfAmt > 0 ? `<div class="mc-row"><span class="k">${cpfLabel}</span><span class="v">${fmt(cpfAmt)}</span></div>` : ''}
+      ${yd.cash > 0 ? `<div class="mc-row"><span class="k">Cash savings</span><span class="v">${fmt(yd.cash)}</span></div>` : ''}
       <hr class="mc-divider">
       <div class="mc-row"><span class="k">Target wealth</span><span class="v">${fmt(target)}</span></div>
       <div class="mc-badge ${gapClass}">${gapLabel}</div>
@@ -1073,7 +1102,7 @@ function renderYearTable(years, retireAge) {
   const body = document.getElementById('yearTableBody');
   body.innerHTML = '';
   const { con } = getInputs();
-  const annualInvest = (con.stocks + con.srs + con.ssb + con.cash) * 12;
+  const annualInvest = (con.stocks + con.srs + con.ssb) * 12;
 
   const showAges = new Set();
   years.forEach(y => { if (y.age % 5 === 0) showAges.add(y.age); });
