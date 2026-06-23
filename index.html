@@ -168,6 +168,11 @@
     /* Rate slider */
     input[type="range"] { width: 100%; accent-color: var(--accent); }
 
+    /* Chart data panel */
+    .cp-row { display: flex; flex-direction: column; }
+    .cp-k { font-size: 10px; color: var(--muted); }
+    .cp-v { font-size: 13px; font-weight: 700; }
+
     /* Responsive */
     @media (max-width: 900px) {
       .layout { grid-template-columns: 1fr; }
@@ -445,6 +450,15 @@
         <span class="legend-item"><span class="legend-dash"></span>Target</span>
       </div>
     </div>
+    <div id="chartDataPanel" style="display:none;padding:10px 0 4px;border-bottom:1px solid var(--border);margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;" id="cpAge">Age –</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;">
+        <div class="cp-row"><span class="cp-k">Projected wealth</span><span class="cp-v" id="cpTotal">–</span></div>
+        <div class="cp-row"><span class="cp-k">Target</span><span class="cp-v" id="cpTarget">–</span></div>
+        <div class="cp-row"><span class="cp-k">Total contributed</span><span class="cp-v" id="cpContrib">–</span></div>
+        <div class="cp-row"><span class="cp-k">Growth from returns</span><span class="cp-v" id="cpGrowth" style="color:var(--green)">–</span></div>
+      </div>
+    </div>
     <div class="chart-wrap"><canvas id="wealthChart"></canvas></div>
   </div>
 
@@ -660,6 +674,7 @@ function project(investRate) {
 
   let cpfOA = bal.cpfOA, cpfSA = bal.cpfSA, cpfRA = 0;
   let srs = bal.srs, stocks = bal.stocks, ssb = bal.ssb, cash = bal.cash;
+  let cumContrib = bal.cpfOA + bal.cpfSA + bal.srs + bal.stocks + bal.ssb + bal.cash;
   const frs2025 = 213000;
   let raCreated = false, cpfLifePayout = 0;
   const years = [];
@@ -688,6 +703,7 @@ function project(investRate) {
       cash: Math.max(0, cash),
       liquid, cpfTotal, total: liquid + cpfTotal,
       cpfLifePayout,
+      contributed: Math.round(cumContrib),
     });
 
     const contributing = age < retireAge;
@@ -704,6 +720,9 @@ function project(investRate) {
     stocks = stocks * (1 + r.stocks) + (contributing ? c.stocks * 12 : 0);
     ssb    = ssb    * (1 + r.ssb)    + (contributing ? c.ssb    * 12 : 0);
     cash   = cash   * 1.01           + (contributing ? c.cash   * 12 : 0);
+    if (contributing) {
+      cumContrib += (c.cpfOA + c.cpfSA + c.stocks + c.srs + c.ssb + c.cash) * 12;
+    }
   }
   return years;
 }
@@ -922,9 +941,10 @@ function recalc() {
 //  CHART
 // ══════════════════════════════════════════════
 function renderChart(years, target, retireAge) {
-  const labels   = years.map(y => y.age);
-  const projData = years.map(y => Math.round(y.total));
-  const targetLine = years.map(() => Math.round(target));
+  const labels          = years.map(y => y.age);
+  const projData        = years.map(y => Math.round(y.total));
+  const targetLine      = years.map(() => Math.round(target));
+  const contributedData = years.map(y => y.contributed);
 
   if (chart) chart.destroy();
   const ctx = document.getElementById('wealthChart').getContext('2d');
@@ -962,8 +982,23 @@ function renderChart(years, target, retireAge) {
       plugins: {
         legend: { display: false },
         tooltip: {
-          callbacks: {
-            label: c => c.dataset.label + ': ' + fmtFull(c.raw),
+          enabled: false,
+          external: function(context) {
+            if (context.tooltip.opacity === 0) return;
+            const i = context.tooltip.dataPoints?.[0]?.dataIndex;
+            if (i == null) return;
+            const age       = context.chart.data.labels[i];
+            const projected = context.chart.data.datasets[0].data[i];
+            const tgt       = context.chart.data.datasets[1].data[i];
+            const contrib   = contributedData[i];
+            const growth    = Math.max(0, projected - contrib);
+            const panel = document.getElementById('chartDataPanel');
+            panel.style.display = '';
+            document.getElementById('cpAge').textContent    = 'Age ' + age;
+            document.getElementById('cpTotal').textContent  = fmtFull(projected);
+            document.getElementById('cpTarget').textContent = fmtFull(tgt);
+            document.getElementById('cpContrib').textContent = fmtFull(contrib);
+            document.getElementById('cpGrowth').textContent  = fmtFull(growth);
           },
         },
       },
